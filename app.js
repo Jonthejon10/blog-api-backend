@@ -7,8 +7,13 @@ const bcrypt = require('bcryptjs')
 const session = require('express-session')
 const passport = require('passport')
 const LocalStrategy = require('passport-local').Strategy
+const passportJWT = require('passport-jwt')
+const JWTStrategy = passportJWT.Strategy
+const ExtractJWT = passportJWT.ExtractJwt
+const cors = require('cors')
+const compression = require('compression')
+const helmet = require('helmet')
 require('dotenv').config()
-
 const app = express();
 
 //Set up mongoose connection
@@ -22,6 +27,9 @@ db.on('error', console.error.bind(console, 'MongoDB connection error:'))
 app.set('views', path.join(__dirname, 'views'));
 app.set('view engine', 'pug');
 
+app.use(helmet())
+app.use(compression())
+app.use(cors())
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -56,6 +64,21 @@ passport.use(
 		})
 	})
 )
+
+passport.use(new JWTStrategy({
+    	jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
+    	secretOrKey : process.env.SECRET
+    },
+    function (jwtPayload, cb) {
+		return Author.findOneById(jwtPayload.id)
+			.then((author) => {
+				return cb(null, author)
+			})
+			.catch((err) => {
+				return cb(err)
+			})
+	}
+))
 
 passport.serializeUser(function (author, done) {
 	done(null, author.id)

@@ -2,6 +2,7 @@ const Author = require('../models/author')
 const { body, validationResult } = require('express-validator')
 const bcrypt = require('bcryptjs')
 const passport = require('passport')
+const jwt = require('jsonwebtoken')
 
 // SIGN UP
 exports.sign_up = [
@@ -53,10 +54,29 @@ exports.sign_up = [
 	},
 ]
 
-exports.log_in = passport.authenticate('local', {
-	successRedirect: '/',
-	failureRedirect: '/log-in',
-})
+exports.log_in = (req, res, next) => {
+	passport.authenticate('local', { session: false }, (err, user, info) => {
+        if (err || !user) {
+            return res.status(400).json({
+                message: 'Something is not right',
+                user : user
+            })
+        }
+
+		req.login(user, {session: false}, (err) => {
+			if (err) {
+				res.send(err)
+			}
+       		
+			const body = { _id: user._id, username: user.username }
+			const token = jwt.sign({ user: body }, process.env.SECRET, {
+				expiresIn: '2d',
+			})
+
+			return res.json({user, token})
+		})
+	})(req, res, next)
+}
 
 exports.log_out = (req, res, next) => {
 	req.logout()
