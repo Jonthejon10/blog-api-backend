@@ -1,3 +1,5 @@
+require('dotenv').config()
+
 const Author = require('../models/author')
 const { body, validationResult } = require('express-validator')
 const bcrypt = require('bcryptjs')
@@ -15,7 +17,7 @@ exports.sign_up = [
 		.trim()
 		.isLength({ min: 4 })
 		.escape(),
-	body('password-confirmation')
+	body('password_confirmation')
 		.notEmpty()
 		.custom((value, { req }) => {
 			if (value !== req.body.password) {
@@ -54,28 +56,40 @@ exports.sign_up = [
 	},
 ]
 
+
 exports.log_in = (req, res, next) => {
-	passport.authenticate('local', { session: false }, (err, user, info) => {
-        if (err || !user) {
-            return res.status(400).json({
-                message: 'Something is not right',
-                user : user
-            })
-        }
+	passport.authenticate('local', (err, user, info) => {
+		if (err || !user) {
+			const error = new Error('An error occurred.')
 
-		req.login(user, {session: false}, (err) => {
-			if (err) {
-				res.send(err)
-			}
-       		
-			const body = { _id: user._id, username: user.username }
-			const token = jwt.sign({ user: body }, process.env.SECRET, {
-				expiresIn: '2d',
-			})
+			return next(error)
+		}
 
-			return res.json({user, token})
+		req.login(user, (error) => {
+			if (error) return next(error)
+
+			const username = user.username
+			const signedUser = { name: username }
+			
+			const token = jwt.sign(signedUser, process.env.SECRET)
+			
+			return res.json({token: token, status: 'success'})
 		})
 	})(req, res, next)
+}
+
+exports.authenticateToken = (req, res, next) => {
+	const authHeader = req.headers['authorization']
+	const token = authHeader && authHeader.split(' ')[1]
+
+	if (token == null) return res.sendStatus(401)
+
+	jwt.verify(token, process.env.SECRET, (err, user) => {
+		if (err) return res.sendStatus(403)
+
+		req.user = user
+		next()
+	})
 }
 
 exports.log_out = (req, res, next) => {

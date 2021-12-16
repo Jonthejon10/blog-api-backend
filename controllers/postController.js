@@ -52,8 +52,6 @@ exports.post_create = [
 					return next(err)
 				}
 
-				// Success
-				res.redirect('/posts')
 			})
 		}
 	},
@@ -61,22 +59,26 @@ exports.post_create = [
 
 // GET ALL POSTS
 exports.posts_get = async (req, res, next) => {
-	try {
-		const posts = await Post.find({})
-		if (!posts) {
-			return res.status(404).json({ err: 'posts not found' })
-		}
-		res.status(200).json({ posts })
-	} catch (err) {
-		next(err)
-	}
+
+    Post.find({}, 'author timestamp title text comments visible')
+		.sort({ timestamp: 1 })
+ 		.populate({path: 'comments', model: 'Comment'})
+ 		.exec((err, posts) => {
+			if (err) {
+				return next(err)
+			}
+			res.status(200).json({posts})
+		})
 }
 
 
 // GET SINGLE POST
 exports.single_post = async (req, res, next) => {
 	try {
-		const post = await Post.findById(req.params.id)
+		const post = await Post.findById(req.params.id).populate({
+			path: 'comments',
+			model: 'Comment',
+		})
 		if (!post) {
 			return res
 				.status(404)
@@ -107,14 +109,14 @@ exports.post_update = [
 		const errors = validationResult(req)
 
 		const post = new Post({
+			_id: req.body.refId,
 			author: req.body.author,
-			timestamp: new Date(),
+			timestamp: req.body.timestamp,
 			title: req.body.title,
 			text: req.body.text,
-			comments: [],
-			visible: true,
+			comments: req.body.comments,
+			visible: req.body.visible,
 		})
-
 		if (!errors.isEmpty()) {
 			res.json({
 				data: req.body,
@@ -123,18 +125,11 @@ exports.post_update = [
 			return
 		} else {
 			// Data from form is valid. Update the record.
-			Post.findByIdAndUpdate(
-				req.params.id,
-				post,
-				{},
-				function (err) {
-					if (err) {
-						return next(err)
-					}
-					// Successful - redirect to game detail page.
-					res.redirect('/posts')
+			Post.findByIdAndUpdate(req.body.refId, post, {}, function (err) {
+				if (err) {
+					return next(err)
 				}
-			)
+			})
 		}
 	},
 ]
@@ -144,18 +139,17 @@ exports.post_delete = (req, res, next) => {
     async.parallel(
 		{
 			post: (callback) => {
-				Post.findById(req.params.id).exec(callback)
+				Post.findById(req.body.id).exec(callback)
 			},
 		},
 		(err, results) => {
 			if (err) {
 				return next(err)
 			}
-			Post.findByIdAndRemove(req.body.postid, function deletePost(err) {
+			Post.findByIdAndRemove(req.body.id, function deletePost(err) {
 				if (err) {
 					return next(err)
 				}
-				res.redirect('/posts')
 			})
 		}
 	)

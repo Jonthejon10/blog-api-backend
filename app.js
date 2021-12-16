@@ -23,10 +23,6 @@ mongoose.connect(mongoDB, { useNewUrlParser: true, useUnifiedTopology: true })
 var db = mongoose.connection
 db.on('error', console.error.bind(console, 'MongoDB connection error:'))
 
-// view engine setup
-app.set('views', path.join(__dirname, 'views'));
-app.set('view engine', 'pug');
-
 app.use(helmet())
 app.use(compression())
 app.use(cors())
@@ -35,6 +31,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// view engine setup
+app.set('views', path.join(__dirname, 'views'));
+app.set('view engine', 'pug');
 
 const Author = require('./models/author')
 
@@ -64,21 +64,6 @@ passport.use(
 		})
 	})
 )
-
-passport.use(new JWTStrategy({
-    	jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
-    	secretOrKey : process.env.SECRET
-    },
-    function (jwtPayload, cb) {
-		return Author.findOneById(jwtPayload.id)
-			.then((author) => {
-				return cb(null, author)
-			})
-			.catch((err) => {
-				return cb(err)
-			})
-	}
-))
 
 passport.serializeUser(function (author, done) {
 	done(null, author.id)

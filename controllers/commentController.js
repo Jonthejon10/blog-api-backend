@@ -1,4 +1,5 @@
 const Comment = require('../models/comment')
+const Post = require('../models/post')
 const { body, validationResult } = require('express-validator')
 const async = require('async')
 
@@ -19,8 +20,7 @@ exports.comment_create = [
             author: req.body.author,
             timestamp: new Date(),
             text: req.body.text
-        })
-
+		})
 		if (!errors.isEmpty()) {
 			res.json({
 				data: req.body,
@@ -28,9 +28,14 @@ exports.comment_create = [
 			})
 			return
 		} else {
-			// Data valid, save post.
+			// Data valid, save comment.
 			comment.save((err) => {
 				if (err) {
+					return next(err)
+				}
+			})
+			Post.findByIdAndUpdate(req.body.reference, { $push: {comments: comment} }, {}, (err) => {
+				if(err) {
 					return next(err)
 				}
 			})
@@ -52,25 +57,32 @@ exports.comments_get = async (req, res, next) => {
 }
 
 // DELETE COMMENT
-exports.comment_delete = (req, res, next) => {
+exports.comment_delete = async (req, res, next) => {
     async.parallel(
 		{
 			comment: (callback) => {
-				Comment.findById(req.params.id).exec(callback)
+				Comment.findById(req.body.id).exec(callback)
 			},
 		},
-		(err, results) => {
+		async (err, results) => {
 			if (err) {
 				return next(err)
 			}
+			
+			// Deleting from comment collection
 			Comment.findByIdAndRemove(
-				req.body.commentid,
+				req.body.id,
 				function deleteComment(err) {
 					if (err) {
 						return next(err)
 					}
 				}
 			)
+
+			// Deleting comment from post object
+			const parentPost = await Post.findOne({ _id: req.body.post_id })
+			await parentPost.comments.pull({ _id: req.body.id })
+			await parentPost.save()
 		}
 	)
 }

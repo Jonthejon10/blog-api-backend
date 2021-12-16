@@ -7,7 +7,7 @@ const PostSchema = new Schema({
 	title: { required: true, type: String, minLength: 1 },
 	text: { required: true, type: String, minLength: 1},
 	comments: [
-		{ type: Schema.Types.ObjectId, ref: 'Comments'},
+		{ type: Schema.Types.ObjectId, ref: 'Comments', required: true },
     ],
     visible: {required: true, type: Boolean}
 })
