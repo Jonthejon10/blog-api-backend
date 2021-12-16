@@ -2,6 +2,6 @@
 
 ## Made with Express and Mongoose
 
-Check out the frontend: <a href='https://github.com/Jonthejon10/blog-api-frontend'></a>
+Check out the frontend: https://github.com/Jonthejon10/blog-api-frontend
 
-Or the CMS: <a href='https://github.com/Jonthejon10/blog-api-cms'></a>
+Or the CMS: https://github.com/Jonthejon10/blog-api-cms'
